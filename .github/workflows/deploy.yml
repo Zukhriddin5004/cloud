@@ -1,0 +1,42 @@
+name: 🚀 Deploy to Server (Nginx + Gunicorn)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 📡 SSH and Deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no root@147.182.222.67 << 'EOF'
+            echo "🔄 CD to project folder"
+            cd /root/networking/erp_project_fixed
+
+            echo "🔁 Git Pull"
+            git pull
+
+            echo "📦 Install dependencies"
+            pip3 install -r requirements.txt
+
+            echo "📂 Migrate database"
+            python3 manage.py migrate
+
+            echo "🧹 Collect static files"
+            python3 manage.py collectstatic --noinput
+
+            echo "♻️ Restart Gunicorn"
+            systemctl restart gunicorn
+
+            echo "✅ Deployment completed"
+          EOF
